@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Client Search</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #005b3c;
+      margin: 0;
+      padding: 0;
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      height: 100vh;
+      padding-top: 40px;
+    }
+
+    .logo {
+      margin-top: 10px;
+    }
+
+    .search-container {
+      display: flex;
+      width: 700px;
+      margin-top: 20px;
+    }
+
+    input[type="text"] {
+      flex: 1;
+      padding: 12px 20px;
+      border: none;
+      border-radius: 30px 0 0 30px;
+      font-size: 16px;
+      box-sizing: border-box;
+    }
+
+    button {
+      padding: 12px 30px;
+      background-color: #00a651;
+      color: white;
+      border: none;
+      border-radius: 0 30px 30px 0;
+      font-size: 16px;
+      cursor: pointer;
+    }
+
+    .results {
+      background: white;
+      color: black;
+      border-radius: 8px;
+      margin-top: 10px;
+      padding: 0;
+      display: none;
+      width: 700px;
+      max-height: 400px;
+      overflow-y: auto;
+      transition: opacity 0.3s ease;
+    }
+
+    .results.visible {
+      display: block;
+      opacity: 1;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    th, td {
+      text-align: left;
+      padding: 10px;
+      vertical-align: top;
+    }
+
+    th {
+      background-color: #f2f2f2;
+      color: #333;
+    }
+
+    tr:nth-child(even) td {
+      background-color: #f9f9f9;
+    }
+
+    input[type="checkbox"] {
+      margin-right: 10px;
+    }
+
+    .selection-summary {
+      margin-top: 20px;
+      font-size: 16px;
+      color: #b5e61d;
+    }
+
+    .tiles-container {
+      margin-top: 30px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 15px;
+      justify-content: center;
+    }
+
+    .tile-button {
+      background-color: #b5e61d;
+      color: #005b3c;
+      padding: 9px 15px; /* 25% smaller than original 12px 20px */
+      border: none;
+      border-radius: 10px;
+      font-size: 12px; /* 25% smaller than original 16px */
+      cursor: pointer;
+      min-width: 113px; /* 25% smaller than original 150px */
+    }
+
+    .report-frame {
+      width: 90%;
+      height: 600px;
+      border: none;
+      margin-top: 20px;
+      display: none;
+    }
+	
+    .popout-button {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      padding: 6px 10px;
+      background-color: #b5e61d;
+      color: #005b3c;
+      border: none;
+      border-radius: 4px;
+      font-size: 18px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .popout-button::before {
+      content: "\1F5D7";
+      font-size: 18px;
+    }
+  </style>
+</head>
+<body>
+ <button class="popout-button" onclick="window.open(window.location.href, '_blank')"></button>
+    <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQN6n4FNuZvVxHNZQQqA3NzwBzC6CxWqqOzwg&s" alt="Company Logo" class="logo" />
+  <div class="search-container">
+    <input type="text" id="searchInput" placeholder="Search client name...">
+    <button id="searchBtn">Search</button>
+  </div>
+  <div class="results" id="results"></div>
+  <div class="selection-summary" id="selectionSummary"></div>
+  <div class="tiles-container" id="tilesContainer"></div>
+  <iframe id="reportFrame" class="report-frame"></iframe>
+
+  <script>
+    const clients = [...Array.from({ length: 10 }, (_, i) => ({
+      name: `Group ${i + 1}`,
+      aclms: Array.from({ length: 3 }, (_, j) => ({
+        name: `ACLM ${i + 1}.${j + 1}`,
+        mdms: Array.from({ length: 5 }, (_, k) => `MDM ${i + 1}.${j + 1}.${k + 1}`)
+      }))
+    }))];
+
+    function matchesQuery(query, text) {
+      return text.toLowerCase().includes(query);
+    }
+
+    function saveSelections() {
+      const selectedGroups = Array.from(document.querySelectorAll('.group-checkbox:checked')).map(cb => cb.parentElement.textContent.trim());
+      const selectedACLMS = Array.from(document.querySelectorAll('.aclm-checkbox:checked')).map(cb => cb.parentElement.textContent.trim());
+
+      const storageData = {
+        groups: selectedGroups,
+        aclms: selectedACLMS
+      };
+
+      localStorage.setItem('clientSelections', JSON.stringify(storageData));
+
+      document.getElementById('selectionSummary').textContent =
+        `Selected Groups: ${selectedGroups.join(', ')} | Selected ACLMs: ${selectedACLMS.join(', ')}`;
+    }
+
+    function restoreSelections() {
+      const stored = localStorage.getItem('clientSelections');
+      if (!stored) return;
+      const parsed = JSON.parse(stored);
+
+      document.querySelectorAll('.group-checkbox').forEach(cb => {
+        const name = cb.parentElement.textContent.trim();
+        cb.checked = parsed.groups.includes(name);
+      });
+      document.querySelectorAll('.aclm-checkbox').forEach(cb => {
+        const name = cb.parentElement.textContent.trim();
+        cb.checked = parsed.aclms.includes(name);
+      });
+
+      document.getElementById('selectionSummary').textContent =
+        `Selected Groups: ${parsed.groups.join(', ')} | Selected ACLMs: ${parsed.aclms.join(', ')}`;
+    }
+
+    function performSearch() {
+      const query = document.getElementById('searchInput').value.toLowerCase();
+      const resultsContainer = document.getElementById('results');
+      resultsContainer.innerHTML = '';
+
+      const table = document.createElement('table');
+      const thead = document.createElement('thead');
+      const headerRow = document.createElement('tr');
+      headerRow.innerHTML = '<th>Consolidated Coverage Group</th><th>ACLM Parent</th><th>MDM Client<br><small>Selection available inside the dashboard only</small></th>';
+      thead.appendChild(headerRow);
+      table.appendChild(thead);
+
+      const tbody = document.createElement('tbody');
+
+      clients.forEach((group, groupIndex) => {
+        const groupMatch = matchesQuery(query, group.name);
+        const anyACLMMatch = group.aclms.some(aclm => matchesQuery(query, aclm.name) || aclm.mdms.some(mdm => matchesQuery(query, mdm)));
+
+        if (groupMatch || anyACLMMatch) {
+          const aclmsToRender = groupMatch ? group.aclms : group.aclms.filter(aclm => matchesQuery(query, aclm.name) || aclm.mdms.some(mdm => matchesQuery(query, mdm)));
+
+          let groupRowspan = aclmsToRender.reduce((acc, aclm) => acc + aclm.mdms.length, 0);
+          let groupRendered = false;
+
+          aclmsToRender.forEach((aclm, aclmIndex) => {
+            let aclmRendered = false;
+            aclm.mdms.forEach((mdm, mdmIndex) => {
+              if (groupMatch || matchesQuery(query, aclm.name) || matchesQuery(query, mdm)) {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                  ${!groupRendered ? `<td rowspan="${groupRowspan}"><input type="checkbox" class="group-checkbox" data-group-index="${groupIndex}"> ${group.name}</td>` : ''}
+                  ${!aclmRendered ? `<td rowspan="${aclm.mdms.length}"><input type="checkbox" class="aclm-checkbox" data-group-index="${groupIndex}" data-aclm-index="${aclmIndex}"> ${aclm.name}</td>` : ''}
+                  <td>${mdm}</td>
+                `;
+                tbody.appendChild(row);
+                groupRendered = true;
+                aclmRendered = true;
+              }
+            });
+          });
+        }
+      });
+
+      table.appendChild(tbody);
+      resultsContainer.appendChild(table);
+      resultsContainer.classList.add('visible');
+      resultsContainer.style.display = 'block';
+
+      document.querySelectorAll('.group-checkbox').forEach(checkbox => {
+        checkbox.addEventListener('change', function () {
+          const groupIndex = this.getAttribute('data-group-index');
+          document.querySelectorAll(`.aclm-checkbox[data-group-index="${groupIndex}"]`).forEach(aclmCheckbox => {
+            aclmCheckbox.checked = this.checked;
+          });
+          saveSelections();
+        });
+      });
+
+      document.querySelectorAll('.aclm-checkbox').forEach(aclmCheckbox => {
+        aclmCheckbox.addEventListener('change', function () {
+          const groupIndex = this.getAttribute('data-group-index');
+          const aclms = document.querySelectorAll(`.aclm-checkbox[data-group-index="${groupIndex}"]`);
+          const groupCheckbox = document.querySelector(`.group-checkbox[data-group-index="${groupIndex}"]`);
+
+          const anyChecked = Array.from(aclms).some(cb => cb.checked);
+          groupCheckbox.checked = anyChecked;
+          saveSelections();
+        });
+      });
+
+      restoreSelections();
+    }
+
+    document.getElementById("searchBtn").addEventListener("click", performSearch);
+    document.getElementById("searchInput").addEventListener("keypress", function(e) {
+      if (e.key === "Enter") {
+        performSearch();
+      }
+    });
+
+    document.addEventListener("click", function (e) {
+      const results = document.getElementById("results");
+      const searchContainer = document.querySelector(".search-container");
+      if (!results.contains(e.target) && !searchContainer.contains(e.target)) {
+        results.classList.remove("visible");
+        results.style.display = "none";
+      }
+    });
+
+    window.onload = () => {
+      const stored = localStorage.getItem('clientSelections');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        document.getElementById('selectionSummary').textContent =
+          `Selected Groups: ${parsed.groups.join(', ')} | Selected ACLMs: ${parsed.aclms.join(', ')}`;
+      }
+      generateTiles();
+    };
+
+    function generateTiles() {
+      const tilesData = Array.from({ length: 10 }, (_, i) => ({
+        name: `Report ${String.fromCharCode(65 + i)}`,
+        url: `https://powerbi.com/report${i + 1}`
+      }));
+
+      const container = document.getElementById('tilesContainer');
+      const iframe = document.getElementById('reportFrame');
+
+      tilesData.forEach(tile => {
+        const btn = document.createElement('button');
+        btn.className = 'tile-button';
+        btn.textContent = tile.name;
+        btn.onclick = () => {
+          iframe.src = tile.url;
+          iframe.style.display = 'block';
+        };
+        container.appendChild(btn);
+      });
+    }
+  </script>
+</body>
+</html>
