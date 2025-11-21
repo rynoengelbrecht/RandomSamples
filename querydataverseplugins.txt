@@ -1,34 +1,39 @@
 SELECT
-    pt.name AS PluginTypeName,
-    s.name AS StepName,
-    m.name AS Message,                      -- Create / Update
-    CASE s.stage
-        WHEN 10 THEN 'Pre-Validation'
-        WHEN 20 THEN 'Pre-Operation'
-        WHEN 40 THEN 'Post-Operation'
-        ELSE 'Stage ' + CAST(s.stage AS VARCHAR(10))
-    END AS OperationStage,
-    CASE s.mode
-        WHEN 0 THEN 'Synchronous'
-        WHEN 1 THEN 'Asynchronous'
-        ELSE 'Mode ' + CAST(s.mode AS VARCHAR(10))
+    w.name AS ProcessName,
+    w.category,
+    CASE w.category
+        WHEN 0 THEN 'Classic Workflow'
+        WHEN 1 THEN 'Dialog'
+        WHEN 2 THEN 'Business Process Flow'
+        WHEN 3 THEN 'Action'
+        WHEN 4 THEN 'Business Rule'
+        WHEN 5 THEN 'Power Automate (Cloud Flow)'
+        ELSE 'Other'
+    END AS CategoryName,
+    w.primaryentity AS PrimaryEntity,
+    CASE w.mode
+        WHEN 0 THEN 'Background (Async)'
+        WHEN 1 THEN 'Real-time (Sync)'
+        ELSE 'Mode ' + CAST(w.mode AS VARCHAR(10))
     END AS ExecutionMode,
-    s.rank AS StepOrder,
-    s.filteringattributes AS FilteringAttributes
+    -- Triggers (mostly meaningful for classic workflows)
+    w.triggeroncreate              AS TriggerOnCreate,
+    w.triggeronupdate              AS TriggerOnUpdate,
+    w.triggeronupdateattributelist AS TriggerOnUpdateAttributeList,
+    w.triggerondelete              AS TriggerOnDelete,
+    w.triggeronassign              AS TriggerOnAssign,
+    w.triggeronstatuschange        AS TriggerOnStatusChange,
+    -- Useful to see who owns it
+    w.owninguser,
+    w.owningbusinessunit
 FROM
-    sdkmessageprocessingstep AS s
-    INNER JOIN sdkmessage AS m
-        ON s.sdkmessageid = m.sdkmessageid
-    INNER JOIN sdkmessagefilter AS f
-        ON s.sdkmessagefilterid = f.sdkmessagefilterid
-    INNER JOIN plugintype AS pt
-        ON s.plugintypeid = pt.plugintypeid
+    workflow AS w
 WHERE
-    f.primaryobjecttypecode = 'account'
-    AND m.name IN ('Create', 'Update')
-    AND s.statecode = 0 -- active steps only (optional)
+    w.primaryentity = 'account'
+    AND w.type = 1          -- 1 = Definition (not instances)
+    AND w.statecode = 1     -- 1 = Activated
+    AND w.category IN (0, 5) -- 0 = classic workflow, 5 = cloud flow (Power Automate)
 ORDER BY
-    m.name,
-    OperationStage,
+    CategoryName,
     ExecutionMode,
-    s.rank;
+    w.name;
