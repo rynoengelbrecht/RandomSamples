@@ -1,15 +1,13 @@
-SELECT TOP 100
-    w.name,
+SELECT
+    w.name           AS FlowName,
     w.workflowid,
     w.category,
     w.primaryentity,
     w.statecode,
-    w.type,
-    w.createdon
+    w.clientdata
 FROM
     workflow AS w
 WHERE
-    w.category IN (5, 6)   -- 5 = cloud flow, 6 = desktop flow
-    AND w.type = 1         -- definitions, not instances
-ORDER BY
-    w.createdon DESC;
+    w.category = 5           -- Cloud flows
+    AND w.type = 1           -- Definitions
+    AND LOWER(w.clientdata) LIKE '%account%';
