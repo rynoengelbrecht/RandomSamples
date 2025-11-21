@@ -1,0 +1,1127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Nedbank Record Comments Panel POC</title>
+    <style>
+        :root {
+            /* Nedbank-inspired palette */
+            --nb-green-dark: #005339;   /* primary */
+            --nb-green-main: #006341;
+            --nb-green-light: #00a86b;
+            --nb-green-soft: #e3f3ec;
+            --nb-grey-bg: #f5f6f7;
+            --nb-grey-border: #d5d7dc;
+            --nb-grey-soft: #e4e6eb;
+            --nb-text-main: #262626;
+            --nb-text-muted: #6b6f7b;
+            --nb-danger: #e03131;
+
+            --card-bg: #ffffff;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: var(--nb-grey-bg);
+            color: var(--nb-text-main);
+        }
+
+        .panel-root {
+            width: 100%;
+            max-width: 400px;
+            height: 100vh;
+            max-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            border-left: 1px solid var(--nb-grey-border);
+            background-color: var(--nb-grey-bg);
+        }
+
+        .panel-inner {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+
+        .header {
+            padding: 12px 14px;
+            border-bottom: 1px solid var(--nb-grey-border);
+            background: linear-gradient(to right, var(--nb-green-dark), var(--nb-green-main));
+            color: #ffffff;
+        }
+
+        .record-title {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .record-subtitle {
+            font-size: 12px;
+            opacity: 0.9;
+        }
+
+        .badge-record {
+            display: inline-block;
+            font-size: 11px;
+            padding: 2px 8px;
+            border-radius: 999px;
+            border: 1px solid rgba(255, 255, 255, 0.35);
+            margin-top: 6px;
+            opacity: 0.9;
+        }
+
+        .content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .section {
+            padding: 10px 14px;
+            border-bottom: 1px solid var(--nb-grey-border);
+            background-color: #fff;
+        }
+
+        .section-title {
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            color: var(--nb-text-muted);
+        }
+
+        /* Filter Controls */
+        .filters-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            align-items: center;
+        }
+
+        .pill-toggle-group {
+            display: inline-flex;
+            border-radius: 999px;
+            border: 1px solid var(--nb-grey-soft);
+            overflow: hidden;
+            background-color: #fff;
+        }
+
+        .pill-toggle {
+            font-size: 11px;
+            padding: 3px 10px;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            color: var(--nb-text-muted);
+            min-width: 64px;
+            text-align: center;
+        }
+
+        .pill-toggle.active {
+            background-color: var(--nb-green-soft);
+            color: var(--nb-green-dark);
+            font-weight: 500;
+        }
+
+        .filter-select {
+            font-size: 11px;
+            padding: 3px 6px;
+            border-radius: 4px;
+            border: 1px solid var(--nb-grey-soft);
+            background-color: #fff;
+            color: var(--nb-text-main);
+        }
+
+        .counter {
+            margin-left: auto;
+            font-size: 11px;
+            color: var(--nb-text-muted);
+        }
+
+        /* Composer */
+        .composer {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .composer-textarea-wrapper {
+            position: relative;
+            width: 100%;
+        }
+
+        .composer textarea {
+            width: 100%;
+            min-height: 70px;
+            max-height: 180px;
+            resize: vertical;
+            font-size: 12px;
+            padding: 6px 8px;
+            border-radius: 4px;
+            border: 1px solid var(--nb-grey-soft);
+            outline: none;
+        }
+
+        .composer textarea:focus {
+            border-color: var(--nb-green-main);
+            box-shadow: 0 0 0 1px var(--nb-green-soft);
+        }
+
+        .composer-row {
+            display: flex;
+            gap: 6px;
+        }
+
+        .composer-row label {
+            font-size: 11px;
+            color: var(--nb-text-muted);
+            margin-bottom: 2px;
+            display: block;
+        }
+
+        .composer-select {
+            width: 100%;
+            font-size: 11px;
+            padding: 3px 6px;
+            border-radius: 4px;
+            border: 1px solid var(--nb-grey-soft);
+            background-color: #fff;
+        }
+
+        .composer-actions {
+            display: flex;
+            justify-content: flex-end;
+            margin-top: 4px;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .error-text {
+            font-size: 11px;
+            color: var(--nb-danger);
+        }
+
+        .btn-primary {
+            border: none;
+            border-radius: 999px;
+            padding: 5px 16px;
+            font-size: 12px;
+            font-weight: 500;
+            background-color: var(--nb-green-main);
+            color: white;
+            cursor: pointer;
+        }
+
+        .btn-primary:hover {
+            background-color: var(--nb-green-dark);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        /* Comments List */
+        .comments-wrapper {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px 10px 12px;
+            background-color: var(--nb-grey-bg);
+        }
+
+        .comments-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .comment-card {
+            background-color: var(--card-bg);
+            border-radius: 6px;
+            padding: 8px 10px;
+            border: 1px solid var(--nb-grey-soft);
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .comment-card.completed {
+            background-color: #f2f3f4;
+            border-style: dashed;
+            opacity: 0.92;
+        }
+
+        .comment-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            gap: 4px;
+        }
+
+        .comment-author {
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .comment-date {
+            font-size: 11px;
+            color: var(--nb-text-muted);
+        }
+
+        .comment-meta-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            align-items: center;
+        }
+
+        .pill-section {
+            font-size: 10px;
+            padding: 2px 6px;
+            border-radius: 999px;
+            background-color: var(--nb-green-soft);
+            color: var(--nb-green-dark);
+            border: 1px solid #c5e4d4;
+        }
+
+        .pill-status {
+            font-size: 10px;
+            padding: 2px 6px;
+            border-radius: 999px;
+            border: 1px solid var(--nb-grey-soft);
+        }
+
+        .pill-status.open {
+            background-color: #e6f0ff;
+            color: #1f4e96;
+            border-color: #c1d7ff;
+        }
+
+        .pill-status.completed {
+            background-color: #f4f4f5;
+            color: #5f626a;
+        }
+
+        .pill-directed {
+            font-size: 10px;
+            padding: 1px 6px;
+            border-radius: 999px;
+            background-color: #fff7e6;
+            color: #b98228;
+            border: 1px solid #faecd8;
+        }
+
+        .mentions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 3px;
+            margin-top: 2px;
+        }
+
+        .mention-chip {
+            font-size: 10px;
+            padding: 1px 6px;
+            border-radius: 999px;
+            background-color: var(--nb-green-soft);
+            color: var(--nb-green-dark);
+        }
+
+        .comment-body {
+            font-size: 12px;
+            line-height: 1.4;
+            margin-top: 2px;
+        }
+
+        .comment-body.completed {
+            color: #70727a;
+        }
+
+        .comment-actions {
+            display: flex;
+            justify-content: flex-end;
+            margin-top: 4px;
+            gap: 4px;
+        }
+
+        .btn-secondary {
+            border-radius: 999px;
+            border: 1px solid var(--nb-grey-soft);
+            background-color: #fff;
+            padding: 3px 10px;
+            font-size: 11px;
+            cursor: pointer;
+            color: var(--nb-text-main);
+        }
+
+        .btn-secondary:hover {
+            background-color: #f5f7f9;
+        }
+
+        .empty-state {
+            font-size: 12px;
+            color: var(--nb-text-muted);
+            padding: 10px;
+            text-align: center;
+        }
+
+        .empty-state span {
+            display: block;
+        }
+
+        .empty-state strong {
+            display: block;
+            margin-top: 3px;
+        }
+
+        /* Scrollbar tweak for WebKit */
+        .comments-wrapper::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .comments-wrapper::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .comments-wrapper::-webkit-scrollbar-thumb {
+            background-color: var(--nb-grey-soft);
+            border-radius: 999px;
+        }
+
+        /* Mention dropdown */
+        .mention-dropdown {
+            position: absolute;
+            z-index: 999;
+            min-width: 200px;
+            max-height: 180px;
+            overflow-y: auto;
+            background-color: #fff;
+            border-radius: 4px;
+            border: 1px solid var(--nb-grey-soft);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+            font-size: 12px;
+            display: none;
+        }
+
+        .mention-dropdown-header {
+            padding: 4px 8px;
+            font-size: 11px;
+            color: var(--nb-text-muted);
+            border-bottom: 1px solid var(--nb-grey-soft);
+            background-color: #f8fafb;
+        }
+
+        .mention-item {
+            padding: 4px 8px;
+            cursor: pointer;
+        }
+
+        .mention-item:hover,
+        .mention-item.active {
+            background-color: var(--nb-green-soft);
+            color: var(--nb-green-dark);
+        }
+
+        .mention-empty {
+            padding: 6px 8px;
+            font-size: 11px;
+            color: var(--nb-text-muted);
+        }
+    </style>
+</head>
+<body>
+<div class="panel-root">
+    <div class="panel-inner">
+        <!-- Header with mocked record info -->
+        <div class="header">
+            <div class="record-title" id="recordTitle"></div>
+            <div class="record-subtitle" id="recordSubtitle"></div>
+            <div class="badge-record" id="recordBadge"></div>
+        </div>
+
+        <!-- Filters -->
+        <div class="section">
+            <div class="section-title">Filters</div>
+            <div class="filters-row">
+                <div class="pill-toggle-group" aria-label="View mode">
+                    <button type="button" class="pill-toggle active" id="viewAllBtn">All</button>
+                    <button type="button" class="pill-toggle" id="viewToMeBtn">@Me</button>
+                </div>
+
+                <select id="statusFilter" class="filter-select" title="Status filter">
+                    <option value="all">Status: All</option>
+                    <option value="open">Status: Open</option>
+                    <option value="completed">Status: Completed</option>
+                </select>
+
+                <select id="sectionFilter" class="filter-select" title="Section filter">
+                    <option value="all">Section: All</option>
+                    <option value="">Whole record</option>
+                    <option value="Overview">Section: Overview</option>
+                    <option value="Financials">Section: Financials</option>
+                    <option value="Contacts">Section: Contacts</option>
+                </select>
+
+                <div class="counter" id="commentsCounter">0 of 0</div>
+            </div>
+        </div>
+
+        <!-- Composer -->
+        <div class="section">
+            <div class="section-title">New Comment</div>
+            <div class="composer">
+                <div class="composer-textarea-wrapper" id="composerWrapper">
+                    <textarea id="commentText"
+                              placeholder="Add a comment about this record or a section… use @ to mention (e.g. @Jane Doe)."></textarea>
+
+                    <!-- Mention dropdown -->
+                    <div id="mentionDropdown" class="mention-dropdown">
+                        <div class="mention-dropdown-header">Mention someone</div>
+                        <div id="mentionList"></div>
+                    </div>
+                </div>
+
+                <div class="composer-row">
+                    <div style="flex: 1;">
+                        <label for="sectionSelect">Section context</label>
+                        <select id="sectionSelect" class="composer-select">
+                            <option value="">None / Whole record</option>
+                            <option value="Overview">Overview</option>
+                            <option value="Financials">Financials</option>
+                            <option value="Contacts">Contacts</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="composer-actions">
+                    <span class="error-text" id="composerError" style="display:none;"></span>
+                    <button type="button" class="btn-primary" id="addCommentBtn">Add Comment</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Comments -->
+        <div class="content">
+            <div class="comments-wrapper">
+                <div id="commentsList" class="comments-list"></div>
+                <div id="emptyState" class="empty-state" style="display:none;">
+                    <span>No comments found for the current filters.</span>
+                    <strong>Try switching to “All” or adjusting the status/section filters.</strong>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // ======================
+    // MOCK CONTEXT & DATA
+    // ======================
+    // In a real D365 implementation, this would come from formContext.
+    const recordContext = {
+        entityLogicalName: "account",
+        recordId: "00000000-0000-0000-0000-000000123456",
+        displayName: "Contoso Ltd"
+    };
+
+    // Mock users (exact list requested)
+    const users = [
+        { id: "u1", name: "Ryno Engelbrecht" },
+        { id: "u2", name: "Jane Doe" },
+        { id: "u3", name: "John Doe" },
+        { id: "u4", name: "Jonny Doe" },
+        { id: "u5", name: "Janie Doe" }
+    ];
+
+    const currentUser = users[0]; // Ryno as current user
+
+    function minutesAgo(mins) {
+        return new Date(Date.now() - mins * 60 * 1000);
+    }
+
+    // Initial mock comments in section / record context
+    let comments = [
+        {
+            id: "c1",
+            recordId: recordContext.recordId,
+            entityLogicalName: recordContext.entityLogicalName,
+            sectionName: "", // whole record
+            author: users[2], // John
+            mentions: [currentUser],
+            text: "@Ryno Engelbrecht please confirm the overall risk profile for this account.",
+            createdOn: minutesAgo(30),
+            status: "open"
+        },
+        {
+            id: "c2",
+            recordId: recordContext.recordId,
+            entityLogicalName: recordContext.entityLogicalName,
+            sectionName: "Overview",
+            author: currentUser,
+            mentions: [users[2], users[4]],
+            text: "In the Overview section: @John Doe and @Janie Doe, please update the relationship summary for Q4.",
+            createdOn: minutesAgo(120),
+            status: "open"
+        },
+        {
+            id: "c3",
+            recordId: recordContext.recordId,
+            entityLogicalName: recordContext.entityLogicalName,
+            sectionName: "Financials",
+            author: users[1], // Jane
+            mentions: [],
+            text: "Financials look aligned with the latest audited statements.",
+            createdOn: minutesAgo(300),
+            status: "completed"
+        },
+        {
+            id: "c4",
+            recordId: recordContext.recordId,
+            entityLogicalName: recordContext.entityLogicalName,
+            sectionName: "Contacts",
+            author: users[4], // Janie
+            mentions: [currentUser],
+            text: "@Ryno Engelbrecht please verify that key contacts have consent for digital communications.",
+            createdOn: minutesAgo(10),
+            status: "open"
+        },
+        {
+            id: "c5",
+            recordId: recordContext.recordId,
+            entityLogicalName: recordContext.entityLogicalName,
+            sectionName: "Overview",
+            author: users[3], // Jonny
+            mentions: [users[1]],
+            text: "@Jane Doe could you double-check the sector classification in the Overview section?",
+            createdOn: minutesAgo(600),
+            status: "completed"
+        }
+    ];
+
+    function computeDirectedFlag(comment) {
+        return comment.mentions.some(m => m.id === currentUser.id);
+    }
+
+    comments = comments.map(c => ({
+        ...c,
+        isDirectedToCurrentUser: computeDirectedFlag(c)
+    }));
+
+    // ======================
+    // STATE
+    // ======================
+
+    const state = {
+        viewMode: "all",      // "all" | "toMe"
+        statusFilter: "all",  // "all" | "open" | "completed"
+        sectionFilter: "all"  // "all" | "" | "Overview" | "Financials" | "Contacts"
+    };
+
+    const mentionState = {
+        active: false,
+        query: "",
+        startIndex: null,
+        caretIndex: null,
+        filteredUsers: [],
+        highlightedIndex: 0
+    };
+
+    // ======================
+    // DOM ELEMENTS
+    // ======================
+
+    const recordTitleEl = document.getElementById("recordTitle");
+    const recordSubtitleEl = document.getElementById("recordSubtitle");
+    const recordBadgeEl = document.getElementById("recordBadge");
+
+    const viewAllBtn = document.getElementById("viewAllBtn");
+    const viewToMeBtn = document.getElementById("viewToMeBtn");
+    const statusFilterEl = document.getElementById("statusFilter");
+    const sectionFilterEl = document.getElementById("sectionFilter");
+    const commentsCounterEl = document.getElementById("commentsCounter");
+
+    const commentTextEl = document.getElementById("commentText");
+    const composerErrorEl = document.getElementById("composerError");
+    const addCommentBtn = document.getElementById("addCommentBtn");
+    const sectionSelectEl = document.getElementById("sectionSelect");
+    const composerWrapperEl = document.getElementById("composerWrapper");
+
+    const commentsListEl = document.getElementById("commentsList");
+    const emptyStateEl = document.getElementById("emptyState");
+
+    const mentionDropdownEl = document.getElementById("mentionDropdown");
+    const mentionListEl = document.getElementById("mentionList");
+
+    // ======================
+    // INITIALISATION
+    // ======================
+
+    function initRecordHeader() {
+        recordTitleEl.textContent = `${capitalize(recordContext.entityLogicalName)}: ${recordContext.displayName}`;
+        recordSubtitleEl.textContent = `Record ID: ${recordContext.recordId}`;
+        recordBadgeEl.textContent = `Mocked context • ${currentUser.name} as current user`;
+    }
+
+    function capitalize(str) {
+        if (!str) return "";
+        return str.charAt(0).toUpperCase() + str.slice(1);
+    }
+
+    // ======================
+    // FILTERING & RENDERING
+    // ======================
+
+    function applyFilters() {
+        let filtered = comments.slice();
+
+        if (state.viewMode === "toMe") {
+            filtered = filtered.filter(c => c.isDirectedToCurrentUser);
+        }
+
+        if (state.statusFilter !== "all") {
+            filtered = filtered.filter(c => c.status === state.statusFilter);
+        }
+
+        if (state.sectionFilter !== "all") {
+            filtered = filtered.filter(c => c.sectionName === state.sectionFilter);
+        }
+
+        return filtered.sort((a, b) => b.createdOn - a.createdOn);
+    }
+
+    function renderComments() {
+        const filtered = applyFilters();
+        commentsListEl.innerHTML = "";
+        commentsCounterEl.textContent = `${filtered.length} of ${comments.length}`;
+
+        if (filtered.length === 0) {
+            emptyStateEl.style.display = "block";
+            return;
+        } else {
+            emptyStateEl.style.display = "none";
+        }
+
+        filtered.forEach(comment => {
+            const card = document.createElement("div");
+            card.className = "comment-card" + (comment.status === "completed" ? " completed" : "");
+
+            const header = document.createElement("div");
+            header.className = "comment-header";
+
+            const authorSpan = document.createElement("span");
+            authorSpan.className = "comment-author";
+            authorSpan.textContent = comment.author.name + (comment.author.id === currentUser.id ? " (Me)" : "");
+
+            const dateSpan = document.createElement("span");
+            dateSpan.className = "comment-date";
+            dateSpan.textContent = formatDateFriendly(comment.createdOn);
+
+            header.appendChild(authorSpan);
+            header.appendChild(dateSpan);
+            card.appendChild(header);
+
+            const metaRow = document.createElement("div");
+            metaRow.className = "comment-meta-row";
+
+            // Section pill
+            const sectionPill = document.createElement("span");
+            sectionPill.className = "pill-section";
+            sectionPill.textContent = comment.sectionName
+                ? `Section: ${comment.sectionName}`
+                : "Whole record";
+            metaRow.appendChild(sectionPill);
+
+            // Status pill
+            const statusPill = document.createElement("span");
+            statusPill.className = "pill-status " + (comment.status === "open" ? "open" : "completed");
+            statusPill.textContent = comment.status === "open" ? "Open" : "Completed";
+            metaRow.appendChild(statusPill);
+
+            // Directed pill
+            if (comment.isDirectedToCurrentUser) {
+                const directedPill = document.createElement("span");
+                directedPill.className = "pill-directed";
+                directedPill.textContent = "@Me";
+                metaRow.appendChild(directedPill);
+            }
+
+            card.appendChild(metaRow);
+
+            // Mention chips
+            if (comment.mentions && comment.mentions.length > 0) {
+                const mentionsContainer = document.createElement("div");
+                mentionsContainer.className = "mentions";
+                comment.mentions.forEach(m => {
+                    const chip = document.createElement("span");
+                    chip.className = "mention-chip";
+                    chip.textContent = "@" + m.name;
+                    mentionsContainer.appendChild(chip);
+                });
+                card.appendChild(mentionsContainer);
+            }
+
+            // Body
+            const body = document.createElement("div");
+            body.className = "comment-body" + (comment.status === "completed" ? " completed" : "");
+            body.textContent = comment.text;
+            card.appendChild(body);
+
+            // Actions
+            const actions = document.createElement("div");
+            actions.className = "comment-actions";
+
+            const toggleBtn = document.createElement("button");
+            toggleBtn.className = "btn-secondary";
+
+            if (comment.status === "open") {
+                toggleBtn.textContent = "Mark as completed";
+                toggleBtn.addEventListener("click", () => updateCommentStatus(comment.id, "completed"));
+            } else {
+                toggleBtn.textContent = "Reopen";
+                toggleBtn.addEventListener("click", () => updateCommentStatus(comment.id, "open"));
+            }
+
+            actions.appendChild(toggleBtn);
+            card.appendChild(actions);
+
+            commentsListEl.appendChild(card);
+        });
+    }
+
+    function formatDateFriendly(date) {
+        const d = new Date(date);
+        const now = new Date();
+
+        const sameDay = d.toDateString() === now.toDateString();
+
+        const yesterday = new Date();
+        yesterday.setDate(now.getDate() - 1);
+        const isYesterday = d.toDateString() === yesterday.toDateString();
+
+        const timeStr = d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+
+        if (sameDay) {
+            return `Today ${timeStr}`;
+        } else if (isYesterday) {
+            return `Yesterday ${timeStr}`;
+        } else {
+            return `${d.toLocaleDateString()} ${timeStr}`;
+        }
+    }
+
+    function updateCommentStatus(id, newStatus) {
+        comments = comments.map(c => c.id === id ? { ...c, status: newStatus } : c);
+        renderComments();
+    }
+
+    // ======================
+    // @MENTIONS LOGIC
+    // ======================
+
+    function escapeRegExp(str) {
+        return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    }
+
+    // parseMentionsFromText: find all @Full Name occurrences for known users
+    function parseMentionsFromText(text) {
+        const found = [];
+        users.forEach(user => {
+            const regex = new RegExp("@" + escapeRegExp(user.name) + "\\b", "g");
+            if (regex.test(text)) {
+                found.push(user);
+            }
+        });
+        return found;
+    }
+
+    function updateMentionStateFromCaret() {
+        const text = commentTextEl.value;
+        const caretIndex = commentTextEl.selectionEnd;
+        mentionState.caretIndex = caretIndex;
+
+        // Walk backwards from caret to find '@' in current token
+        let i = caretIndex - 1;
+        let atIndex = -1;
+        while (i >= 0) {
+            const ch = text[i];
+            if (ch === '@') {
+                atIndex = i;
+                break;
+            }
+            if (ch === ' ' || ch === '\n' || ch === '\t') {
+                break;
+            }
+            i--;
+        }
+
+        if (atIndex === -1) {
+            hideMentionDropdown();
+            return;
+        }
+
+        const query = text.substring(atIndex + 1, caretIndex);
+        // If query contains whitespace, it's not a valid mention token
+        if (/\s/.test(query)) {
+            hideMentionDropdown();
+            return;
+        }
+
+        mentionState.active = true;
+        mentionState.startIndex = atIndex;
+        mentionState.query = query;
+
+        const q = query.toLowerCase();
+        let filtered = users.slice();
+        if (q) {
+            filtered = users.filter(u => u.name.toLowerCase().includes(q));
+        }
+
+        mentionState.filteredUsers = filtered;
+        mentionState.highlightedIndex = 0;
+        renderMentionDropdown();
+    }
+
+    // renderMentionDropdown: position dropdown and render filtered users
+    function renderMentionDropdown() {
+        if (!mentionState.active || !mentionState.filteredUsers.length) {
+            hideMentionDropdown();
+            return;
+        }
+
+        mentionListEl.innerHTML = "";
+        mentionState.filteredUsers.forEach((user, idx) => {
+            const item = document.createElement("div");
+            item.className = "mention-item" + (idx === mentionState.highlightedIndex ? " active" : "");
+            item.textContent = user.name;
+            item.addEventListener("mousedown", (e) => {
+                // prevent textarea blur before selection
+                e.preventDefault();
+                handleMentionSelection(user);
+            });
+            mentionListEl.appendChild(item);
+        });
+
+        mentionDropdownEl.style.display = "block";
+
+        // For POC: anchor dropdown to bottom-left of textarea
+        const taRect = commentTextEl.getBoundingClientRect();
+        const wrapperRect = composerWrapperEl.getBoundingClientRect();
+        const top = taRect.bottom - wrapperRect.top;
+        const left = taRect.left - wrapperRect.left;
+
+        mentionDropdownEl.style.top = top + "px";
+        mentionDropdownEl.style.left = left + "px";
+    }
+
+    function hideMentionDropdown() {
+        mentionState.active = false;
+        mentionState.query = "";
+        mentionState.startIndex = null;
+        mentionState.filteredUsers = [];
+        mentionDropdownEl.style.display = "none";
+    }
+
+    // handleMentionSelection: replace '@query' with '@Full Name'
+    function handleMentionSelection(user) {
+        const text = commentTextEl.value;
+        const caretIndex = commentTextEl.selectionEnd;
+        const start = mentionState.startIndex;
+
+        if (start == null || start > caretIndex) {
+            hideMentionDropdown();
+            return;
+        }
+
+        const before = text.substring(0, start);
+        const after = text.substring(caretIndex);
+        const insertion = "@" + user.name + " ";
+
+        commentTextEl.value = before + insertion + after;
+        const newCaret = before.length + insertion.length;
+        commentTextEl.focus();
+        commentTextEl.selectionStart = newCaret;
+        commentTextEl.selectionEnd = newCaret;
+
+        hideMentionDropdown();
+    }
+
+    function handleMentionKeyDown(e) {
+        if (!mentionState.active || !mentionState.filteredUsers.length) {
+            return;
+        }
+
+        if (e.key === "ArrowDown") {
+            e.preventDefault();
+            if (mentionState.highlightedIndex < mentionState.filteredUsers.length - 1) {
+                mentionState.highlightedIndex++;
+            } else {
+                mentionState.highlightedIndex = 0;
+            }
+            renderMentionDropdown();
+        } else if (e.key === "ArrowUp") {
+            e.preventDefault();
+            if (mentionState.highlightedIndex > 0) {
+                mentionState.highlightedIndex--;
+            } else {
+                mentionState.highlightedIndex = mentionState.filteredUsers.length - 1;
+            }
+            renderMentionDropdown();
+        } else if (e.key === "Enter") {
+            e.preventDefault();
+            const user = mentionState.filteredUsers[mentionState.highlightedIndex];
+            if (user) {
+                handleMentionSelection(user);
+            }
+        } else if (e.key === "Escape") {
+            e.preventDefault();
+            hideMentionDropdown();
+        }
+    }
+
+    // ======================
+    // COMPOSER / ADD COMMENT
+    // ======================
+
+    function clearComposerError() {
+        composerErrorEl.style.display = "none";
+        composerErrorEl.textContent = "";
+    }
+
+    function showComposerError(msg) {
+        composerErrorEl.textContent = msg;
+        composerErrorEl.style.display = "inline";
+    }
+
+    // handleAddComment: validate, parse mentions, push to in-memory array
+    function handleAddComment() {
+        clearComposerError();
+        const textRaw = commentTextEl.value;
+        const textTrim = textRaw.trim();
+        if (!textTrim) {
+            showComposerError("Comment text cannot be empty.");
+            return;
+        }
+
+        const sectionValue = sectionSelectEl.value;
+        const mentions = parseMentionsFromText(textRaw);
+
+        const newComment = {
+            id: "c" + (comments.length + 1) + "-" + Date.now(),
+            recordId: recordContext.recordId,
+            entityLogicalName: recordContext.entityLogicalName,
+            sectionName: sectionValue,
+            author: currentUser,
+            mentions: mentions,
+            text: textRaw,
+            createdOn: new Date(),
+            status: "open"
+        };
+
+        newComment.isDirectedToCurrentUser = computeDirectedFlag(newComment);
+
+        comments = [newComment, ...comments];
+
+        // Reset composer
+        commentTextEl.value = "";
+        sectionSelectEl.value = "";
+        hideMentionDropdown();
+
+        renderComments();
+    }
+
+    // ======================
+    // EVENT BINDINGS
+    // ======================
+
+    function bindEvents() {
+        viewAllBtn.addEventListener("click", () => {
+            state.viewMode = "all";
+            viewAllBtn.classList.add("active");
+            viewToMeBtn.classList.remove("active");
+            renderComments();
+        });
+
+        viewToMeBtn.addEventListener("click", () => {
+            state.viewMode = "toMe";
+            viewToMeBtn.classList.add("active");
+            viewAllBtn.classList.remove("active");
+            renderComments();
+        });
+
+        statusFilterEl.addEventListener("change", () => {
+            state.statusFilter = statusFilterEl.value;
+            renderComments();
+        });
+
+        sectionFilterEl.addEventListener("change", () => {
+            state.sectionFilter = sectionFilterEl.value;
+            renderComments();
+        });
+
+        addCommentBtn.addEventListener("click", handleAddComment);
+
+        commentTextEl.addEventListener("input", () => {
+            clearComposerError();
+            updateMentionStateFromCaret();
+        });
+
+        commentTextEl.addEventListener("click", () => {
+            updateMentionStateFromCaret();
+        });
+
+        commentTextEl.addEventListener("keyup", (e) => {
+            if (["Backspace", "Delete"].includes(e.key)) {
+                updateMentionStateFromCaret();
+            }
+        });
+
+        commentTextEl.addEventListener("keydown", (e) => {
+            handleMentionKeyDown(e);
+        });
+
+        // Click outside composer wrapper hides the mention dropdown
+        document.addEventListener("click", (e) => {
+            if (!composerWrapperEl.contains(e.target)) {
+                hideMentionDropdown();
+            }
+        });
+    }
+
+    // ======================
+    // INIT
+    // ======================
+
+    function init() {
+        initRecordHeader();
+        bindEvents();
+        renderComments();
+    }
+
+    document.addEventListener("DOMContentLoaded", init);
+
+    // ======================
+    // NOTE: D365 INTEGRATION HOOKS
+    // ======================
+    // - To integrate with real D365 record context:
+    //   Replace `recordContext` with formContext.data.entity values, passed
+    //   via Xrm.App.sidePanes.createPane(... navigate({ data: ... }))
+    //
+    // - To persist comments in Dataverse:
+    //   Replace in-memory `comments` array mutations with calls to a custom
+    //   Dataverse table via Web API / custom actions, storing:
+    //   recordId, entityLogicalName, sectionName, author, mentions, text,
+    //   createdOn, status.
+    //
+    // - This POC is intentionally self-contained and runs in any browser.
+
+</script>
+</body>
+</html>
