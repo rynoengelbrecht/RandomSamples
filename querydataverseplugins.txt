@@ -1,0 +1,34 @@
+SELECT
+    pt.name                           AS PluginTypeName,
+    s.name                            AS StepName,
+    m.name                            AS Message,            -- Create / Update
+    CASE s.stage
+        WHEN 10 THEN 'Pre-Validation'
+        WHEN 20 THEN 'Pre-Operation'
+        WHEN 40 THEN 'Post-Operation'
+        ELSE CONCAT('Stage ', s.stage)
+    END                               AS OperationStage,     -- "Pre" / "Post"
+    CASE s.mode
+        WHEN 0 THEN 'Synchronous'
+        WHEN 1 THEN 'Asynchronous'
+        ELSE CONCAT('Mode ', s.mode)
+    END                               AS ExecutionMode,      -- "Sync" / "Async"
+    s.rank                            AS StepOrder,
+    s.filteringattributes             AS FilteringAttributes -- attributes that trigger plugin
+FROM
+    sdkmessageprocessingstep AS s
+    INNER JOIN sdkmessage AS m
+        ON s.sdkmessageid = m.sdkmessageid
+    INNER JOIN sdkmessagefilter AS f
+        ON s.sdkmessagefilterid = f.sdkmessagefilterid
+    INNER JOIN plugintype AS pt
+        ON s.plugintypeid = pt.plugintypeid
+WHERE
+    f.primaryobjecttypecode = 'account'           -- Entity = Account
+    AND m.name IN ('Create', 'Update')           -- Operation = Create / Update
+    AND s.statecode = 0                          -- Active steps only (optional)
+ORDER BY
+    m.name,
+    OperationStage,
+    ExecutionMode,
+    s.rank;
